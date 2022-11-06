@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TheaterManagementService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">movie-theater</a> &gt; <a href="index.source.html" class="el_package">com.jpmc.theater.service</a> &gt; <span class="el_source">TheaterManagementService.java</span></div><h1>TheaterManagementService.java</h1><pre class="source lang-java linenums">package com.jpmc.theater.service;
+
+import com.jpmc.theater.exception.TheaterServiceException;
+import com.jpmc.theater.model.Screen;
+import com.jpmc.theater.model.ServiceResponse;
+import com.jpmc.theater.model.Showing;
+import com.jpmc.theater.model.Movie;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static com.jpmc.theater.util.Constants.*;
+
+public class TheaterManagementService {
+
+    private List&lt;Movie&gt; movies;
+    private List&lt;Screen&gt; screens;
+    private Map&lt;Integer, List&lt;Showing&gt;&gt; shows;
+
+<span class="fc" id="L23">    public TheaterManagementService() {</span>
+<span class="fc" id="L24">        movies = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L25">        screens = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L26">        shows = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L27">    }</span>
+
+    /**
+     * This method add new movie into the theater
+     *
+     * @param  title  title of the movie
+     * @param  runningTime duration of the movie
+     * @param  ticketPrice price of a ticket for given movie
+     * @param  specialCode special movie code
+     * @return optional reference to newly added movie object
+     */
+    public Optional&lt;Movie&gt; addNewMovie(String title, Duration runningTime, double ticketPrice, int specialCode) {
+<span class="fc" id="L39">        Movie newMovie = null;</span>
+<span class="fc" id="L40">        boolean isAlreadyPresent = movies.stream()</span>
+<span class="fc" id="L41">                .anyMatch(m -&gt; m.getTitle().equalsIgnoreCase(title));</span>
+
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (!isAlreadyPresent) {</span>
+<span class="fc" id="L44">            newMovie = new Movie(title, runningTime, ticketPrice, specialCode);</span>
+<span class="fc" id="L45">            movies.add(newMovie);</span>
+        }
+<span class="fc" id="L47">        return Optional.ofNullable(newMovie);</span>
+    }
+
+    /**
+     * This method removes an existing movie from the theater
+     *
+     * @param  movieId  id of the movie to be removed
+     * @return service response containing operation's success and its related message
+     */
+    public ServiceResponse removeMovie(int movieId) {
+
+<span class="fc" id="L58">        Optional&lt;Movie&gt; movie = movies.stream()</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">                .filter(m -&gt; m.getMovieId() == movieId)</span>
+<span class="fc" id="L60">                .findAny();</span>
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (!movie.isPresent()) return new ServiceResponse(false, NO_MOVIES);</span>
+
+<span class="fc" id="L64">        this.removeAllShowsForGivenMovie(movie.get());</span>
+<span class="fc" id="L65">        movies.remove(movie.get());</span>
+<span class="fc" id="L66">        return new ServiceResponse(true, MOVIE_REMOVED);</span>
+    }
+
+    /**
+     * This method returns all movies currently present in the theater
+     *
+     * @return list of all movies currently present in the theater
+     */
+    public List&lt;Movie&gt; getAllMovies() {
+<span class="fc" id="L75">        return movies;</span>
+    }
+
+    /**
+     * This method add new show into the theater for a given movie.
+     * It calculated sequence of newly added show by performing time comparison with existing shows.
+     * It also validates timing conflicts with existing shows. If there is a conflict, then it will not
+     * add given new show and return empty optional.
+     *
+     * @param  screen  screen object reference where new show is expect to be added
+     * @param  movie movie object reference associated with the show
+     * @param  anticipatedStartTime start date and time of the show
+     * @return optional reference to newly added show object
+     */
+    public Optional&lt;Showing&gt; addNewShow(Screen screen, Movie movie, LocalDateTime anticipatedStartTime)
+            throws TheaterServiceException {
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (!screens.contains(screen)) throw new TheaterServiceException(NO_SCREEN + &quot; - &quot; + screen.getScreenId());</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (!movies.contains(movie)) throw new TheaterServiceException(NO_MOVIES + &quot; - &quot; + movie.getTitle());</span>
+
+<span class="fc" id="L95">        Showing newShow = null;</span>
+<span class="fc" id="L96">        List&lt;Showing&gt; currentShowList = shows.get(screen.getScreenId());</span>
+
+<span class="fc" id="L98">        Predicate&lt;Showing&gt; predicate =</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">                s -&gt; s.getStartTime().toLocalDate().compareTo(anticipatedStartTime.toLocalDate()) == 0;</span>
+<span class="fc" id="L100">        List&lt;Showing&gt; allShowsForGivenDate = currentShowList.stream()</span>
+<span class="fc" id="L101">                .filter(predicate)</span>
+<span class="fc" id="L102">                .sorted(Comparator.comparing(Showing::getSequenceOfTheDay))</span>
+<span class="fc" id="L103">                .collect(Collectors.toList());</span>
+
+        int seq;
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        for (seq = 0; seq &lt; allShowsForGivenDate.size(); ++seq) {</span>
+<span class="fc" id="L107">            Showing currShow = allShowsForGivenDate.get(seq);</span>
+
+<span class="fc" id="L109">            LocalDateTime currShowStartTime = currShow.getStartTime();</span>
+<span class="fc" id="L110">            LocalDateTime currShowEndTime = currShowStartTime</span>
+<span class="fc" id="L111">                    .plusMinutes(currShow.getMovie().getRunningTime().toMinutes());</span>
+
+<span class="fc" id="L113">            LocalDateTime newShowEndTime = anticipatedStartTime</span>
+<span class="fc" id="L114">                    .plusMinutes(movie.getRunningTime().toMinutes());</span>
+
+<span class="fc bfc" id="L116" title="All 2 branches covered.">            if (anticipatedStartTime.isEqual(currShowEndTime)</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">                    || anticipatedStartTime.isAfter(currShowEndTime)) continue;</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">            if (isFallBetweenInterval(currShowStartTime, currShowEndTime, anticipatedStartTime, newShowEndTime)) {</span>
+<span class="fc" id="L119">                return Optional.empty();</span>
+            }
+            break;
+        }
+
+<span class="fc" id="L124">        newShow = new Showing(movie, screen, seq + 1, anticipatedStartTime);</span>
+<span class="fc" id="L125">        moveSequenceByOne(allShowsForGivenDate, seq);</span>
+<span class="fc" id="L126">        currentShowList.add(newShow);</span>
+
+<span class="fc" id="L128">        return Optional.ofNullable(newShow);</span>
+    }
+
+    /**
+     * This method removes all existing shows for a given movie from the theater
+     *
+     * @param  movie movie object reference associated with the show
+     * @return service response containing operation's success and its related message
+     */
+    public ServiceResponse removeAllShowsForGivenMovie(Movie movie) {
+<span class="fc" id="L138">        shows.entrySet().forEach(screenShows -&gt; {</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">            Predicate&lt;Showing&gt; predicate = s -&gt; s.getMovie().getMovieId() == movie.getMovieId();</span>
+<span class="fc" id="L140">            screenShows.getValue().removeIf(predicate);</span>
+<span class="fc" id="L141">        });</span>
+<span class="fc" id="L142">        return new ServiceResponse(true, SHOW_CANCELLED_SUCCESS);</span>
+    }
+
+    /**
+     * This method removes all existing shows for a given movie from a given screen from the theater
+     *
+     * @param  movie movie object reference associated with the show
+     * @param  screenId id of the screen from where movies are expected to be removed
+     * @return service response containing operation's success and its related message
+     */
+    public ServiceResponse removeAllShowsForGivenMovieAndScreen(Movie movie, int screenId) {
+<span class="fc" id="L153">        List&lt;Showing&gt; screenShows = shows.get(screenId);</span>
+
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        if (screenShows == null) return new ServiceResponse(false, NO_SCREEN);</span>
+
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        Predicate&lt;Showing&gt; predicate = s -&gt; s.getMovie().getMovieId() == movie.getMovieId();</span>
+<span class="fc" id="L158">        screenShows.removeIf(predicate);</span>
+<span class="fc" id="L159">        return new ServiceResponse(true, SHOW_CANCELLED_SUCCESS);</span>
+    }
+
+    /**
+     * This method returns all shows (from all screens) currently present in the theater
+     *
+     * @return map of all screens and their respective list of shows currently present in the theater
+     */
+    public Map&lt;Integer, List&lt;Showing&gt;&gt; getAllShows() {
+<span class="fc" id="L168">        return this.shows;</span>
+    }
+
+    public List&lt;Showing&gt; getAllShowsForGivenScreen(int screenId) {
+<span class="fc" id="L172">        return shows.get(screenId).stream()</span>
+<span class="fc" id="L173">                .sorted(Comparator.comparing(Showing::getSequenceOfTheDay))</span>
+<span class="fc" id="L174">                .collect(Collectors.toList());</span>
+    }
+
+    /**
+     * This method add a new screen in the theater
+     *
+     * @param  totalSeats total number of seats for given screen
+     * @return newly added screen object reference
+     */
+    public Screen addNewScreen(int totalSeats) {
+<span class="fc" id="L184">        Screen newScreen = new Screen(totalSeats);</span>
+<span class="fc" id="L185">        screens.add(newScreen);</span>
+
+<span class="fc" id="L187">        List&lt;Showing&gt; screenShows = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L188">        shows.put(newScreen.getScreenId(), screenShows);</span>
+<span class="fc" id="L189">        return newScreen;</span>
+    }
+
+    /**
+     * This method removes existing screen in the theater
+     *
+     * @param  screenId id of the screen to be removed
+     * @return service response containing operation's success and its related message
+     */
+    public ServiceResponse removeScreen(int screenId) {
+<span class="fc" id="L199">        Optional&lt;Screen&gt; screen = screens.stream()</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">                .filter(s -&gt; s.getScreenId() == screenId)</span>
+<span class="fc" id="L201">                .findAny();</span>
+
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        if (!screen.isPresent()) return new ServiceResponse(false, NO_SCREEN);</span>
+
+<span class="fc" id="L205">        screens.remove(screen.get());</span>
+<span class="fc" id="L206">        shows.remove(screenId);</span>
+<span class="fc" id="L207">        return new ServiceResponse(true, SCREEN_REMOVED);</span>
+    }
+
+    /**
+     * This method returns all existing screens in the theater
+     *
+     * @return list of all existing screen in the theater
+     */
+    public List&lt;Screen&gt; getAllScreens() {
+<span class="fc" id="L216">        return screens;</span>
+    }
+
+    /**
+     * This helper method will help in validating timing conflicts while adding a new show
+     *
+     * @param  s1 start time of existing show
+     * @param  s2 end time of existing show
+     * @param  m1 start time of new show
+     * @param  m2 end time of new show
+     * @return boolean representing whether new show's time interval conflicts with existing show's time interval
+     */
+    private boolean isFallBetweenInterval(LocalDateTime s1, LocalDateTime s2, LocalDateTime m1, LocalDateTime m2) {
+<span class="pc bpc" id="L229" title="1 of 4 branches missed.">        return (s1.isEqual(m1) || s2.isEqual(m2)) ||</span>
+<span class="pc bpc" id="L230" title="4 of 8 branches missed.">                ((m1.isAfter(s1) &amp;&amp; m1.isBefore(s2)) || (m2.isAfter(s1) &amp;&amp; m2.isBefore(s2)));</span>
+    }
+
+    /**
+     * This helper method will help in adjusting the sequence of existing shows (if required) when a new show is added
+     *
+     * @param  shows list of all shows whose sequence needs to be adjusted
+     * @param  startSeq starting sequence of all show from given list
+     * @return void
+     */
+    private void moveSequenceByOne(List&lt;Showing&gt; shows, int startSeq) {
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        for (int i = startSeq; i &lt; shows.size(); i++) {</span>
+<span class="fc" id="L242">            int currSeq = shows.get(i).getSequenceOfTheDay();</span>
+<span class="fc" id="L243">            shows.get(i).setSequenceOfTheDay(currSeq + 1);</span>
+        }
+<span class="fc" id="L245">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BookingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">movie-theater</a> &gt; <a href="index.source.html" class="el_package">com.jpmc.theater.service</a> &gt; <span class="el_source">BookingService.java</span></div><h1>BookingService.java</h1><pre class="source lang-java linenums">package com.jpmc.theater.service;
+
+import com.jpmc.theater.exception.TheaterServiceException;
+import com.jpmc.theater.model.Customer;
+import com.jpmc.theater.model.Reservation;
+import com.jpmc.theater.model.Showing;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.jpmc.theater.util.Constants.*;
+
+public class BookingService {
+
+    private DiscountService discountService;
+    private Map&lt;Integer, List&lt;Reservation&gt;&gt; showingReservations;
+
+<span class="fc" id="L21">    public BookingService() {</span>
+<span class="fc" id="L22">        discountService = new DiscountService();</span>
+<span class="fc" id="L23">        showingReservations = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L24">    }</span>
+
+    /**
+     * This method books tickets for given show and customer
+     *
+     * @param  customer  customer who is requesting the reservation
+     * @param  show show for which the reservation is requested
+     * @param  howManyTickets number of tickets needed for given reservation
+     * @return reservation object reference for successfully made reservation
+     */
+    public Reservation bookTickets(Customer customer, Showing show, int howManyTickets)
+            throws TheaterServiceException {
+
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if (show == null) throw new TheaterServiceException(INVALID_SHOW);</span>
+
+<span class="fc" id="L39">        List&lt;Reservation&gt; currentReservations = showingReservations.get(show.getShowId());</span>
+<span class="fc" id="L40">        int reservedSeats = countTotalReservedSeats(currentReservations);</span>
+
+<span class="fc" id="L42">        int availableSeats = show.getScreen().getTotalSeats() - reservedSeats;</span>
+
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (availableSeats == 0) throw new TheaterServiceException(SHOW_SOLD_OUT);</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (availableSeats &lt; howManyTickets) throw new TheaterServiceException(LIMITED_SEATS + availableSeats);</span>
+
+<span class="fc" id="L47">        double feePerTicket = show.getMovieFee() - discountService.calculateDiscount(show);</span>
+<span class="fc" id="L48">        double totalFee = feePerTicket * howManyTickets;</span>
+
+<span class="fc" id="L50">        Reservation reservation = new Reservation(customer, show, howManyTickets, totalFee);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (currentReservations == null) {</span>
+<span class="fc" id="L52">            currentReservations = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L53">            showingReservations.put(show.getShowId(), currentReservations);</span>
+        }
+<span class="fc" id="L55">        currentReservations.add(reservation);</span>
+
+<span class="fc" id="L57">        return reservation;</span>
+    }
+
+    /**
+     * This method concludes reservations by removing them from list once show is over
+     *
+     * @param  show show for which the reservation needs to be concluded
+     * @return void
+     */
+    public void concludeReservationsAfterShow(Showing show) {
+<span class="fc" id="L67">        showingReservations.remove(show.getShowId());</span>
+<span class="fc" id="L68">    }</span>
+
+    /**
+     * This method return list of all reservations for a given show
+     *
+     * @param  showId show id of the assocated reservations
+     * @return list of all reservations for a given show
+     */
+    public List&lt;Reservation&gt; getAllReservationsForGivenShow(int showId) {
+<span class="fc" id="L77">        return showingReservations.get(showId);</span>
+    }
+
+    /**
+     * This helper method helps in returning total reserved seats for a given show
+     *
+     * @param  currentReservations list of all reservation for given show
+     * @return count of total reserved seats for given show
+     */
+    private int countTotalReservedSeats(List&lt;Reservation&gt; currentReservations) {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (currentReservations == null) return 0;</span>
+
+<span class="fc" id="L89">        AtomicInteger totalSeats = new AtomicInteger();</span>
+<span class="fc" id="L90">        currentReservations.forEach(reservation -&gt; {</span>
+<span class="fc" id="L91">            totalSeats.addAndGet(reservation.getAudienceCount());</span>
+<span class="fc" id="L92">        });</span>
+<span class="fc" id="L93">        return totalSeats.get();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

@@ -1,0 +1,50 @@
+[
+  {
+    "customer": {
+      "name": "Zoe"
+    },
+    "audienceCount": 2,
+    "totalFee": 19.0,
+    "show": {
+      "showId": 662035337,
+      "movie": {
+        "movieId": 963580377,
+        "title": "Spider-Man: No Way Home",
+        "ticketPrice": 12.5,
+        "specialCode": 1,
+        "runningTime": "PT1H30M"
+      },
+      "screen": {
+        "screenId": 1426387877,
+        "totalSeats": 10
+      },
+      "sequenceOfTheDay": 1,
+      "startTime": "2022-11-06T09:00:00",
+      "movieFee": 12.5
+    }
+  },
+  {
+    "customer": {
+      "name": "Alex"
+    },
+    "audienceCount": 3,
+    "totalFee": 28.5,
+    "show": {
+      "showId": 662035337,
+      "movie": {
+        "movieId": 963580377,
+        "title": "Spider-Man: No Way Home",
+        "ticketPrice": 12.5,
+        "specialCode": 1,
+        "runningTime": "PT1H30M"
+      },
+      "screen": {
+        "screenId": 1426387877,
+        "totalSeats": 10
+      },
+      "sequenceOfTheDay": 1,
+      "startTime": "2022-11-06T09:00:00",
+      "movieFee": 12.5
+    }
+  }
+]
